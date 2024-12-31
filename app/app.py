@@ -14,7 +14,7 @@ def main(page: ft.Page):
     page.window_height = 300
     page.window_resizable = False
     page.window.maximizable = False
-    page.window_icon = "assets/next-button.png"
+    page.window_icon = "assets/icon.ico"
 
     label = ft.Text("Авто пропуск диалогов!", size=20, weight="bold", color="blue")
 
