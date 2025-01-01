@@ -53,6 +53,16 @@ class AutoPresserApp:
         if self.thread and self.thread.is_alive():
             self.thread.join()
 
+        self.page.snack_bar = ft.SnackBar(
+            content=ft.Container(
+                ft.Text("Поток остановлен", color=ft.colors.WHITE, size=16, weight=ft.FontWeight.BOLD),
+                alignment=ft.alignment.center,
+            ),
+            bgcolor="#232b36",
+            open=True,
+        )
+        self.page.update()
+
     def on_close(self, e):
         print("Приложение закрыто")
         self.stop_pressing_f = True
@@ -65,7 +75,7 @@ def main(page: ft.Page):
     page.title = "Genshin Diologues"
     page.window_always_on_top = True
     page.window_width = 312
-    page.window_height = 300
+    page.window_height = 350
     page.window_resizable = False
     page.window.maximizable = False
     page.window_icon = "assets/icon.ico"
