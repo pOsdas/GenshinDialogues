@@ -1,10 +1,64 @@
 import flet as ft
-import pyautogui
+import win32api
+import win32con
 import threading
 import time
 
 
-stop_pressing_f = False
+class AutoPresserApp:
+    def __init__(self, page):
+        self.page = page
+        self.stop_pressing_f = False
+        self.thread = None
+        self.timer_label = ft.Text("", size=16, color="blue")
+
+    def countdown(self, start_seconds, callback):
+        for i in range(start_seconds, 0, -1):
+            self.timer_label.value = f"Таймер: {i} секунд"
+            self.page.update()
+            time.sleep(1)
+        self.timer_label.value = "Таймер завершён!"
+        self.page.update()
+        callback()
+
+    def perform_actions(self):
+        screen_width = win32api.GetSystemMetrics(0)
+        screen_height = win32api.GetSystemMetrics(1)
+
+        win32api.SetCursorPos((screen_width // 2, screen_height // 2))
+
+        # click
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+
+        # one more click
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+
+        time.sleep(1)
+        while not self.stop_pressing_f:
+            win32api.keybd_event(0x46, 0, 0, 0)
+            time.sleep(3)
+            win32api.keybd_event(0x46, 0, win32con.KEYEVENTF_KEYUP, 0)
+
+    def start_button_handler(self, e):
+        self.stop_pressing_f = False
+        threading.Thread(
+            target=self.countdown,
+            args=(5, lambda: threading.Thread(target=self.perform_actions).start()),
+        ).start()
+
+    def stop_button_handler(self, e):
+        self.stop_pressing_f = True
+        if self.thread and self.thread.is_alive():
+            self.thread.join()
+
+    def on_close(self, e):
+        print("Приложение закрыто")
+        self.stop_pressing_f = True
+        if self.thread and self.thread.is_alive():
+            self.thread.join()
+        self.page.window_close()
 
 
 def main(page: ft.Page):
@@ -16,71 +70,40 @@ def main(page: ft.Page):
     page.window.maximizable = False
     page.window_icon = "assets/icon.ico"
 
+    app = AutoPresserApp(page)
+
     label = ft.Text("Авто пропуск диалогов!", size=20, weight="bold", color="blue")
 
-    description = "Кнопка 'Старт' выполняет следующее:\n" \
-                  "1. Ждет пока вы откроете игру 10 секунд.\n" \
-                  "2. Начинает нажимать клавишу 'F' каждые 2 секунды бесконечно.\n"
-
-    timer_label = ft.Text("", size=16, color="blue")
-
-    empty_label = ft.Text("")
-
-    def countdown(start_seconds, callback):
-        for i in range(start_seconds, 0, -1):
-            timer_label.value = f"Таймер: {i} секунд"
-            page.update()
-            time.sleep(1)
-        timer_label.value = "Таймер завершён!"
-        page.update()
-        callback()
-
-    def perform_actions():
-        screen_width, screen_height = pyautogui.size()
-        pyautogui.click(x=screen_width // 2, y=screen_height // 2)
-
-        global stop_pressing_f
-        while not stop_pressing_f:
-            pyautogui.press("f")
-            time.sleep(2)
-
-    def start_button_handler(e):
-        global stop_pressing_f
-        stop_pressing_f = False
-        threading.Thread(
-            target=countdown, args=(10, lambda: threading.Thread(target=perform_actions).start())
-        ).start()
-
-    def stop_button_handler(e):
-        global stop_pressing_f
-        stop_pressing_f = True
-
-    def on_close(e):
-        print("Приложение закрыто")
-        page.window_close()
+    description = (
+        "Кнопка 'Старт' выполняет следующее:\n"
+        "1. Ждет пока вы откроете игру 10 секунд.\n"
+        "2. Начинает нажимать клавишу 'F' каждые 2 секунды бесконечно.\n"
+    )
 
     start_button = ft.ElevatedButton(
         "Старт",
-        on_click=start_button_handler,
+        on_click=app.start_button_handler,
+        style=ft.ButtonStyle(bgcolor=ft.colors.INDIGO_500, color=ft.colors.WHITE),
         tooltip=description,
     )
 
     stop_button = ft.ElevatedButton(
         "Стоп",
-        on_click=stop_button_handler,
+        on_click=app.stop_button_handler,
+        style=ft.ButtonStyle(bgcolor=ft.colors.RED_600, color=ft.colors.WHITE),
         tooltip="Останавливает бесконечное нажатие клавиши 'F'.",
     )
 
-    page.on_close = on_close
+    page.on_close = app.on_close
 
     page.add(
         ft.Column(
             controls=[
                 label,
                 start_button,
-                timer_label,
-                empty_label,
-                empty_label,
+                app.timer_label,
+                ft.Text(""),
+                ft.Text(""),
                 stop_button,
             ],
             alignment=ft.MainAxisAlignment.CENTER,
